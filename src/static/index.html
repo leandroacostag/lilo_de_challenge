@@ -1,0 +1,735 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Product Search Engine</title>
+    <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;600&family=Space+Grotesk:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            --bg-dark: #0a0a0f;
+            --bg-card: #12121a;
+            --bg-card-hover: #1a1a25;
+            --accent: #6366f1;
+            --accent-bright: #818cf8;
+            --success: #10b981;
+            --warning: #f59e0b;
+            --text: #e2e8f0;
+            --text-muted: #64748b;
+            --border: #1e1e2e;
+        }
+
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Space Grotesk', sans-serif;
+            background: var(--bg-dark);
+            color: var(--text);
+            min-height: 100vh;
+            background-image: 
+                radial-gradient(ellipse at top, rgba(99, 102, 241, 0.1) 0%, transparent 50%),
+                radial-gradient(ellipse at bottom right, rgba(16, 185, 129, 0.05) 0%, transparent 50%);
+        }
+
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 2rem;
+        }
+
+        header {
+            text-align: center;
+            margin-bottom: 3rem;
+        }
+
+        h1 {
+            font-size: 2.5rem;
+            font-weight: 700;
+            background: linear-gradient(135deg, var(--accent-bright), var(--success));
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            margin-bottom: 0.5rem;
+        }
+
+        .subtitle {
+            color: var(--text-muted);
+            font-size: 1rem;
+        }
+
+        .search-section {
+            background: var(--bg-card);
+            border: 1px solid var(--border);
+            border-radius: 16px;
+            padding: 1.5rem;
+            margin-bottom: 2rem;
+        }
+
+        .search-row {
+            display: flex;
+            gap: 1rem;
+            flex-wrap: wrap;
+        }
+
+        .search-input-wrapper {
+            flex: 1;
+            min-width: 300px;
+            position: relative;
+        }
+
+        .search-input {
+            width: 100%;
+            padding: 1rem 1rem 1rem 3rem;
+            font-size: 1rem;
+            font-family: inherit;
+            background: var(--bg-dark);
+            border: 2px solid var(--border);
+            border-radius: 12px;
+            color: var(--text);
+            transition: all 0.2s;
+        }
+
+        .search-input:focus {
+            outline: none;
+            border-color: var(--accent);
+            box-shadow: 0 0 0 3px rgba(99, 102, 241, 0.2);
+        }
+
+        .search-icon {
+            position: absolute;
+            left: 1rem;
+            top: 50%;
+            transform: translateY(-50%);
+            color: var(--text-muted);
+        }
+
+        .user-select-wrapper {
+            min-width: 220px;
+        }
+
+        .user-select {
+            width: 100%;
+            padding: 1rem;
+            font-size: 1rem;
+            font-family: inherit;
+            background: var(--bg-dark);
+            border: 2px solid var(--border);
+            border-radius: 12px;
+            color: var(--text);
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+
+        .user-select:focus {
+            outline: none;
+            border-color: var(--accent);
+        }
+
+        .search-btn {
+            padding: 1rem 2rem;
+            font-size: 1rem;
+            font-family: inherit;
+            font-weight: 600;
+            background: linear-gradient(135deg, var(--accent), var(--accent-bright));
+            border: none;
+            border-radius: 12px;
+            color: white;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+
+        .search-btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 4px 20px rgba(99, 102, 241, 0.4);
+        }
+
+        .search-btn:active {
+            transform: translateY(0);
+        }
+
+        .meta-info {
+            display: flex;
+            gap: 2rem;
+            margin-top: 1rem;
+            padding-top: 1rem;
+            border-top: 1px solid var(--border);
+            font-size: 0.875rem;
+            color: var(--text-muted);
+        }
+
+        .meta-info span {
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+        }
+
+        .results-section {
+            display: grid;
+            gap: 1rem;
+        }
+
+        .result-card {
+            background: var(--bg-card);
+            border: 1px solid var(--border);
+            border-radius: 12px;
+            padding: 1.25rem;
+            transition: all 0.2s;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .result-card:hover {
+            background: var(--bg-card-hover);
+            border-color: var(--accent);
+            transform: translateX(4px);
+        }
+
+        .result-card.boosted {
+            border-left: 3px solid var(--success);
+        }
+
+        .result-card.boosted::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: linear-gradient(90deg, rgba(16, 185, 129, 0.05), transparent);
+            pointer-events: none;
+        }
+
+        .result-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: flex-start;
+            margin-bottom: 0.75rem;
+        }
+
+        .result-rank {
+            font-family: 'JetBrains Mono', monospace;
+            font-size: 0.75rem;
+            color: var(--text-muted);
+            background: var(--bg-dark);
+            padding: 0.25rem 0.5rem;
+            border-radius: 6px;
+        }
+
+        .result-title {
+            font-size: 1.1rem;
+            font-weight: 600;
+            color: var(--text);
+            margin-bottom: 0.5rem;
+        }
+
+        .result-meta {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 0.75rem;
+            font-size: 0.8rem;
+            color: var(--text-muted);
+            margin-bottom: 0.75rem;
+        }
+
+        .result-meta .tag {
+            background: var(--bg-dark);
+            padding: 0.25rem 0.5rem;
+            border-radius: 6px;
+        }
+
+        .result-meta .tag.category {
+            color: var(--accent-bright);
+        }
+
+        .result-meta .tag.vendor {
+            color: var(--warning);
+        }
+
+        .result-scores {
+            display: flex;
+            gap: 1rem;
+            font-family: 'JetBrains Mono', monospace;
+            font-size: 0.75rem;
+        }
+
+        .score-item {
+            display: flex;
+            align-items: center;
+            gap: 0.25rem;
+        }
+
+        .score-label {
+            color: var(--text-muted);
+        }
+
+        .score-value {
+            color: var(--text);
+        }
+
+        .boost-badge {
+            background: linear-gradient(135deg, var(--success), #059669);
+            color: white;
+            padding: 0.25rem 0.75rem;
+            border-radius: 20px;
+            font-size: 0.75rem;
+            font-weight: 600;
+            display: inline-flex;
+            align-items: center;
+            gap: 0.25rem;
+        }
+
+        .attributes {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 0.5rem;
+            margin-top: 0.75rem;
+            padding-top: 0.75rem;
+            border-top: 1px solid var(--border);
+        }
+
+        .attr-tag {
+            font-family: 'JetBrains Mono', monospace;
+            font-size: 0.7rem;
+            background: rgba(99, 102, 241, 0.1);
+            color: var(--accent-bright);
+            padding: 0.2rem 0.5rem;
+            border-radius: 4px;
+        }
+
+        .empty-state {
+            text-align: center;
+            padding: 4rem 2rem;
+            color: var(--text-muted);
+        }
+
+        .empty-state svg {
+            width: 80px;
+            height: 80px;
+            margin-bottom: 1rem;
+            opacity: 0.5;
+        }
+
+        .loading {
+            text-align: center;
+            padding: 2rem;
+        }
+
+        .loading-spinner {
+            width: 40px;
+            height: 40px;
+            border: 3px solid var(--border);
+            border-top-color: var(--accent);
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
+        }
+
+        @keyframes spin {
+            to { transform: rotate(360deg); }
+        }
+
+        .quick-queries {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 0.5rem;
+            margin-top: 1rem;
+        }
+
+        .quick-query {
+            font-family: 'JetBrains Mono', monospace;
+            font-size: 0.75rem;
+            background: var(--bg-dark);
+            border: 1px solid var(--border);
+            color: var(--text-muted);
+            padding: 0.4rem 0.75rem;
+            border-radius: 20px;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+
+        .quick-query:hover {
+            border-color: var(--accent);
+            color: var(--accent-bright);
+        }
+
+        .pagination {
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            gap: 0.5rem;
+            margin-top: 2rem;
+            padding: 1rem;
+            background: var(--bg-card);
+            border: 1px solid var(--border);
+            border-radius: 12px;
+        }
+
+        .pagination-btn {
+            font-family: inherit;
+            font-size: 0.875rem;
+            padding: 0.5rem 1rem;
+            background: var(--bg-dark);
+            border: 1px solid var(--border);
+            border-radius: 8px;
+            color: var(--text);
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+
+        .pagination-btn:hover:not(:disabled) {
+            border-color: var(--accent);
+            color: var(--accent-bright);
+        }
+
+        .pagination-btn:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+        }
+
+        .pagination-info {
+            font-family: 'JetBrains Mono', monospace;
+            font-size: 0.8rem;
+            color: var(--text-muted);
+            padding: 0 1rem;
+        }
+
+        .page-size-select {
+            font-family: inherit;
+            font-size: 0.875rem;
+            padding: 0.5rem;
+            background: var(--bg-dark);
+            border: 1px solid var(--border);
+            border-radius: 8px;
+            color: var(--text);
+            cursor: pointer;
+        }
+
+        @media (max-width: 768px) {
+            .container {
+                padding: 1rem;
+            }
+
+            h1 {
+                font-size: 1.75rem;
+            }
+
+            .search-row {
+                flex-direction: column;
+            }
+
+            .search-input-wrapper,
+            .user-select-wrapper {
+                min-width: 100%;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <header>
+            <h1>🔍 Product Search Engine</h1>
+            <p class="subtitle">Hybrid BM25 + Vector Search with User Personalization</p>
+        </header>
+
+        <section class="search-section">
+            <div class="search-row">
+                <div class="search-input-wrapper">
+                    <svg class="search-icon" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <circle cx="11" cy="11" r="8"/>
+                        <path d="m21 21-4.35-4.35"/>
+                    </svg>
+                    <input type="text" class="search-input" id="searchInput" placeholder="Search products... (e.g., 3 hp sewage pump weir)">
+                </div>
+                <div class="user-select-wrapper">
+                    <input type="text" class="search-input" id="userInput" 
+                           placeholder="👤 Enter user_id (e.g., user_017)" 
+                           list="userSuggestions"
+                           style="padding-left: 1rem;">
+                    <datalist id="userSuggestions">
+                        <option value="">No user (baseline)</option>
+                        <!-- Users loaded dynamically from API -->
+                    </datalist>
+                </div>
+                <button class="search-btn" id="searchBtn">Search</button>
+            </div>
+
+            <div class="quick-queries">
+                <span style="color: var(--text-muted); font-size: 0.8rem; margin-right: 0.5rem;">Try:</span>
+                <button class="quick-query" data-query="3 hp sewage pump weir">3 hp sewage pump weir</button>
+                <button class="quick-query" data-query="nitrile glove bulk pack">nitrile glove bulk pack</button>
+                <button class="quick-query" data-query="pvc pipe 50mm">pvc pipe 50mm</button>
+                <button class="quick-query" data-query="tomato">tomato</button>
+                <button class="quick-query" data-query="tomato makeup">tomato makeup</button>
+                <button class="quick-query" data-query="angle grinder">angle grinder</button>
+            </div>
+
+            <div class="meta-info" id="metaInfo" style="display: none;">
+                <span>📊 Total: <strong id="totalResults">0</strong></span>
+                <!-- <span>📄 Returned: <strong id="returnedResults">0</strong></span> -->
+                <span id="userInfo" style="display: none;">👤 User: <strong id="currentUser"></strong></span>
+            </div>
+        </section>
+
+        <section class="results-section" id="resultsSection">
+            <div class="empty-state">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
+                    <circle cx="11" cy="11" r="8"/>
+                    <path d="m21 21-4.35-4.35"/>
+                </svg>
+                <p>Enter a search query to find products</p>
+            </div>
+        </section>
+
+        <div class="pagination" id="pagination" style="display: none;">
+            <button class="pagination-btn" id="prevBtn">← Previous</button>
+            <span class="pagination-info" id="pageInfo">Page 1 of 1</span>
+            <button class="pagination-btn" id="nextBtn">Next →</button>
+            <span style="color: var(--text-muted); margin-left: 1rem;">|</span>
+            <label style="color: var(--text-muted); font-size: 0.8rem; margin-left: 0.5rem;">
+                Per page:
+                <select class="page-size-select" id="pageSizeSelect">
+                    <option value="10">10</option>
+                    <option value="20" selected>20</option>
+                    <option value="50">50</option>
+                    <option value="100">100</option>
+                </select>
+            </label>
+        </div>
+    </div>
+
+    <script>
+        const searchInput = document.getElementById('searchInput');
+        const userInput = document.getElementById('userInput');
+        const searchBtn = document.getElementById('searchBtn');
+        const resultsSection = document.getElementById('resultsSection');
+        const metaInfo = document.getElementById('metaInfo');
+        const totalResults = document.getElementById('totalResults');
+        // const returnedResults = document.getElementById('returnedResults');
+        const userInfo = document.getElementById('userInfo');
+        const currentUser = document.getElementById('currentUser');
+        const pagination = document.getElementById('pagination');
+        const prevBtn = document.getElementById('prevBtn');
+        const nextBtn = document.getElementById('nextBtn');
+        const pageInfo = document.getElementById('pageInfo');
+        const pageSizeSelect = document.getElementById('pageSizeSelect');
+
+        // Pagination state
+        let currentPage = 0;
+        let pageSize = 20;
+        let totalHits = 0;
+        let lastQuery = '';
+        let lastUserId = '';
+
+        // Load users with order counts
+        async function loadUsers() {
+            try {
+                const response = await fetch('/users');
+                const data = await response.json();
+                const userSuggestions = document.getElementById('userSuggestions');
+                
+                // Clear existing options except "No user"
+                userSuggestions.innerHTML = '<option value="">No user (baseline)</option>';
+                
+                // Add all users sorted by order count (descending)
+                data.users.forEach(user => {
+                    const option = document.createElement('option');
+                    option.value = user.user_id;
+                    option.textContent = `${user.user_id} (${user.order_count})`;
+                    userSuggestions.appendChild(option);
+                });
+            } catch (error) {
+                console.error('Failed to load users:', error);
+            }
+        }
+
+        // Load users on page load
+        loadUsers();
+
+        // Quick query buttons
+        document.querySelectorAll('.quick-query').forEach(btn => {
+            btn.addEventListener('click', () => {
+                searchInput.value = btn.dataset.query;
+                currentPage = 0;
+                performSearch();
+            });
+        });
+
+        // Search on enter
+        searchInput.addEventListener('keypress', (e) => {
+            if (e.key === 'Enter') {
+                currentPage = 0;
+                performSearch();
+            }
+        });
+        
+        userInput.addEventListener('keypress', (e) => {
+            if (e.key === 'Enter') {
+                currentPage = 0;
+                performSearch();
+            }
+        });
+
+        searchBtn.addEventListener('click', () => {
+            currentPage = 0;
+            performSearch();
+        });
+
+        prevBtn.addEventListener('click', () => {
+            if (currentPage > 0) {
+                currentPage--;
+                performSearch();
+            }
+        });
+
+        nextBtn.addEventListener('click', () => {
+            const maxPage = Math.ceil(totalHits / pageSize) - 1;
+            if (currentPage < maxPage) {
+                currentPage++;
+                performSearch();
+            }
+        });
+
+        pageSizeSelect.addEventListener('change', () => {
+            pageSize = parseInt(pageSizeSelect.value);
+            currentPage = 0;
+            performSearch();
+        });
+
+        async function performSearch() {
+            const query = searchInput.value.trim();
+            if (!query) return;
+
+            const userId = userInput.value.trim();
+            lastQuery = query;
+            lastUserId = userId;
+            const start = currentPage * pageSize;
+            
+            resultsSection.innerHTML = `
+                <div class="loading">
+                    <div class="loading-spinner" style="margin: 0 auto;"></div>
+                    <p style="margin-top: 1rem; color: var(--text-muted);">Searching...</p>
+                </div>
+            `;
+
+            try {
+                let url = `/search?q=${encodeURIComponent(query)}&size=${pageSize}&start=${start}`;
+                if (userId) {
+                    url += `&user_id=${encodeURIComponent(userId)}`;
+                }
+
+                const response = await fetch(url);
+                const data = await response.json();
+
+                totalHits = data.total;
+                displayResults(data, start);
+                updatePagination();
+            } catch (error) {
+                resultsSection.innerHTML = `
+                    <div class="empty-state">
+                        <p style="color: #ef4444;">Error: ${error.message}</p>
+                    </div>
+                `;
+                pagination.style.display = 'none';
+            }
+        }
+
+        function updatePagination() {
+            const totalPages = Math.ceil(totalHits / pageSize);
+            
+            if (totalHits <= pageSize) {
+                pagination.style.display = 'none';
+                return;
+            }
+
+            pagination.style.display = 'flex';
+            pageInfo.textContent = `Page ${currentPage + 1} of ${totalPages} (${totalHits} total)`;
+            
+            prevBtn.disabled = currentPage === 0;
+            nextBtn.disabled = currentPage >= totalPages - 1;
+        }
+
+        function displayResults(data, startOffset = 0) {
+            metaInfo.style.display = 'flex';
+            totalResults.textContent = data.total;
+            // returnedResults.textContent = data.returned;
+
+            if (data.user_id) {
+                userInfo.style.display = 'inline';
+                currentUser.textContent = data.user_id;
+            } else {
+                userInfo.style.display = 'none';
+            }
+
+            if (!data.results || data.results.length === 0) {
+                resultsSection.innerHTML = `
+                    <div class="empty-state">
+                        <p>No results found for "${data.query}"</p>
+                    </div>
+                `;
+                return;
+            }
+
+            const renderAttributes = (attributes) => {
+                if (!attributes || !Array.isArray(attributes)) return '';
+                const parts = attributes
+                    .filter(a => a && a.key && a.value)
+                    .map(a => {
+                        const valObj = a.value || {};
+                        const displayVal =
+                            valObj.raw ??
+                            valObj.value ??
+                            (Array.isArray(valObj.numeric_values) && valObj.numeric_values.length
+                                ? valObj.numeric_values.join(', ')
+                                : '');
+                        return displayVal ? `<span class="attr-tag">${a.key}: ${displayVal}</span>` : '';
+                    })
+                    .filter(Boolean);
+                if (!parts.length) return '';
+                return `<div class="attributes">${parts.join('')}</div>`;
+            };
+
+            resultsSection.innerHTML = data.results.map((result, index) => {
+                const isBoosted = result.user_boost && result.user_boost > 1;
+                const globalRank = startOffset + index + 1;
+
+                return `
+                    <div class="result-card ${isBoosted ? 'boosted' : ''}">
+                        <div class="result-header">
+                            <span class="result-rank">#${globalRank}</span>
+                            ${isBoosted ? `
+                                <span class="boost-badge">
+                                    ⚡ ${result.user_boost}x boost (${result.user_orders} orders)
+                                </span>
+                            ` : ''}
+                        </div>
+                        <div class="result-title">${result.title || 'Untitled'}</div>
+                        <div class="result-meta">
+                            ${result.category ? `<span class="tag category">📁 ${result.category}</span>` : ''}
+                            ${result.vendor ? `<span class="tag vendor">🏢 ${result.vendor}</span>` : ''}
+                        </div>
+                        <div class="result-scores">
+                            <span class="score-item">
+                                <span class="score-label">Score:</span>
+                                <span class="score-value">${result.score?.toFixed(4) || 'N/A'}</span>
+                            </span>
+                            <span class="score-item">
+                                <span class="score-label">BM25:</span>
+                                <span class="score-value">${result.bm25_rank || '—'}</span>
+                            </span>
+                            <span class="score-item">
+                                <span class="score-label">kNN:</span>
+                                <span class="score-value">${result.knn_rank || '—'}</span>
+                            </span>
+                        </div>
+                        ${renderAttributes(result.attributes)}
+                    </div>
+                `;
+            }).join('');
+        }
+    </script>
+</body>
+</html>
+
+

@@ -1,0 +1,183 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$comment": "Elasticsearch index mapping for products. Synonyms are injected at runtime from synonyms.json. Embeddings use all-MiniLM-L6-v2 (384 dims).",
+  "settings": {
+    "number_of_shards": 1,
+    "number_of_replicas": 0,
+    "analysis": {
+      "filter": {
+        "product_synonyms": {
+          "type": "synonym",
+          "synonyms": []
+        },
+        "english_stemmer": {
+          "type": "stemmer",
+          "language": "english"
+        },
+        "english_stop": {
+          "type": "stop",
+          "stopwords": "_english_"
+        }
+      },
+      "analyzer": {
+        "product_analyzer": {
+          "type": "custom",
+          "tokenizer": "standard",
+          "filter": [
+            "lowercase",
+            "product_synonyms",
+            "english_stop",
+            "english_stemmer"
+          ]
+        },
+        "product_search_analyzer": {
+          "type": "custom",
+          "tokenizer": "standard",
+          "filter": [
+            "lowercase",
+            "product_synonyms"
+          ]
+        }
+      },
+      "normalizer": {
+        "keyword_normalizer": {
+          "type": "custom",
+          "filter": ["lowercase", "trim"]
+        }
+      }
+    }
+  },
+  "mappings": {
+    "properties": {
+      "id": {
+        "type": "keyword"
+      },
+      "embedding": {
+        "type": "dense_vector",
+        "dims": 384,
+        "index": true,
+        "similarity": "cosine"
+      },
+      "sku": {
+        "type": "keyword",
+        "normalizer": "keyword_normalizer"
+      },
+      "vendor": {
+        "properties": {
+          "raw": {
+            "type": "keyword"
+          },
+          "value": {
+            "type": "keyword",
+            "normalizer": "keyword_normalizer",
+            "fields": {
+              "text": {
+                "type": "text",
+                "analyzer": "product_analyzer"
+              }
+            }
+          }
+        }
+      },
+      "title": {
+        "properties": {
+          "raw": {
+        "type": "text",
+            "index": false
+      },
+          "value": {
+        "type": "text",
+        "analyzer": "product_analyzer",
+            "search_analyzer": "product_search_analyzer",
+            "fields": {
+              "keyword": {
+                "type": "keyword"
+              }
+            }
+          }
+        }
+      },
+      "description": {
+        "properties": {
+          "raw": {
+        "type": "text",
+            "index": false
+      },
+          "value": {
+        "type": "text",
+        "analyzer": "product_analyzer",
+        "search_analyzer": "product_search_analyzer"
+          }
+        }
+      },
+      "unit_of_measure": {
+        "type": "keyword",
+        "normalizer": "keyword_normalizer"
+      },
+      "weight_kg": {
+        "type": "float"
+      },
+      "weight_g": {
+        "type": "float"
+      },
+      "weight_lb": {
+        "type": "float"
+      },
+      "weight_oz": {
+        "type": "float"
+      },
+      "category": {
+        "type": "text",
+        "analyzer": "product_analyzer",
+        "fields": {
+          "keyword": {
+            "type": "keyword"
+          }
+        }
+      },
+      "category_level1": {
+        "type": "keyword",
+        "normalizer": "keyword_normalizer"
+      },
+      "category_level2": {
+        "type": "keyword",
+        "normalizer": "keyword_normalizer"
+      },
+      "category_level3": {
+        "type": "keyword",
+        "normalizer": "keyword_normalizer"
+      },
+      "attributes": {
+        "type": "nested",
+        "properties": {
+          "key": { "type": "keyword" },
+          "value": {
+            "properties": {
+              "raw":   { "type": "text",   "index": false },
+              "value": { "type": "text",   "index": false },
+              "numeric_values": { "type": "float", "index": false }
+            }
+          }
+        }
+      },
+      "attributes_search": {
+        "type": "text",
+        "analyzer": "product_analyzer",
+        "search_analyzer": "product_search_analyzer"
+      },
+      "region_availability": {
+        "type": "keyword"
+      },
+      "supplier_rating": {
+        "type": "float"
+      },
+      "inventory_status": {
+        "type": "keyword",
+        "normalizer": "keyword_normalizer"
+      },
+      "bulk_pack_quantity": {
+        "type": "integer"
+      }
+    }
+  }
+}

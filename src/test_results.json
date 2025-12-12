@@ -1,0 +1,37 @@
+[
+  {
+    "query": "3 hp sewage pump weir",
+    "passed": false,
+    "issues": [
+      "[Errno 1] Operation not permitted"
+    ]
+  },
+  {
+    "query": "nitrile glove bulk pack",
+    "passed": false,
+    "issues": [
+      "[Errno 1] Operation not permitted"
+    ]
+  },
+  {
+    "query": "pvc pipe 50mm",
+    "passed": false,
+    "issues": [
+      "[Errno 1] Operation not permitted"
+    ]
+  },
+  {
+    "query": "tomato",
+    "passed": false,
+    "issues": [
+      "[Errno 1] Operation not permitted"
+    ]
+  },
+  {
+    "query": "tomato makeup",
+    "passed": false,
+    "issues": [
+      "[Errno 1] Operation not permitted"
+    ]
+  }
+]

@@ -1,0 +1,67 @@
+{
+  "$comment": "Configuration for product data normalization. All attributes are normalized dynamically - no hardcoded list required. Aliases are optional hints for common variations.",
+  
+  "attribute_key_aliases": {
+    "colour": "color",
+    "hp": "power_hp",
+    "horsepower": "power_hp",
+    "volt": "voltage",
+    "diam_mm": "diameter_mm",
+    "flowLPM": "flow_lpm",
+    "bulkPack": "bulk_pack"
+  },
+  
+  "fuzzy_match_threshold": 80,
+  
+  "unit_mapping": {
+    "kg": "kg",
+    "kg.": "kg",
+    "kgs": "kg",
+    "KG": "kg",
+    "kilogram": "kg",
+    "Kilogram": "kg",
+    "g": "g",
+    "grams": "g",
+    "Grams": "g",
+    "lbs": "lb",
+    "lb": "lb",
+    "pounds": "lb",
+    "pound": "lb",
+    "oz": "oz",
+    "ounce": "oz",
+    "fl oz": "fl_oz",
+    "gallon": "gal",
+    "gal": "gal",
+    "liter": "L",
+    "liters": "L",
+    "Liters": "L",
+    "litre": "L",
+    "litres": "L",
+    "Litres": "L",
+    "lt": "L",
+    "L": "L",
+    "ml": "ml",
+    "cc": "cc",
+    "pcs": "pcs",
+    "pc": "pcs",
+    "units": "units"
+  },
+  
+  "weight_to_kg": {
+    "kg": 1.0,
+    "g": 0.001,
+    "lb": 0.453592,
+    "oz": 0.0283495
+  },
+  
+  "junk_patterns": [
+    "###\\s*\\$\\$\\s*%%\\s*@@",
+    "[#$%@]{2,}"
+  ],
+  
+  "bulk_quantity_words": {
+    "dozen": 12,
+    "half-dozen": 6,
+    "half dozen": 6
+  }
+}

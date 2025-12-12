@@ -1,0 +1,30 @@
+{
+  "clean": [
+    "Industrial > Pumps > Sewage Pumps",
+    "Industrial > Pumps > Water Pumps",
+    "Industrial > Compressors > Air Compressors",
+    "Tools > Hand Tools > Wrenches",
+    "Tools > Power Tools > Grinders",
+    "Safety > Gloves > Nitrile",
+    "Safety > Masks > Respirators",
+    "Chemicals > Lubricants > Industrial",
+    "Plastics > Pipes > PVC",
+    "Electrical > Cables > Power Cords",
+    "Food > Vegetables > Tomato",
+    "Cosmetics > Makeup > Face"
+  ],
+  "messy": [
+    "Industrial >> Pumps > Water",
+    "Tool > Power > Grinderz",
+    "Safety > Glove > Nitril",
+    "Chem > Lubricants",
+    "Food > Tomato > Vegetables",
+    "Makeup > Face > Tomato color",
+    "Electrical > Power Cords > Cables",
+    "Industrial > Pump > Sewage",
+    "Plastics > PVC > Pipes",
+    "Industrail > Pmps > Sewage",
+    "Cosmetic > Makup > Face",
+    "Food > Vegtables > Tomato"
+  ]
+}
