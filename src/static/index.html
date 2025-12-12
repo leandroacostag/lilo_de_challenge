@@ -672,18 +672,12 @@
             }
 
             const renderAttributes = (attributes) => {
-                if (!attributes || !Array.isArray(attributes)) return '';
-                const parts = attributes
-                    .filter(a => a && a.key && a.value)
-                    .map(a => {
-                        const valObj = a.value || {};
-                        const displayVal =
-                            valObj.raw ??
-                            valObj.value ??
-                            (Array.isArray(valObj.numeric_values) && valObj.numeric_values.length
-                                ? valObj.numeric_values.join(', ')
-                                : '');
-                        return displayVal ? `<span class="attr-tag">${a.key}: ${displayVal}</span>` : '';
+                if (!attributes || typeof attributes !== 'object') return '';
+                const parts = Object.entries(attributes)
+                    .filter(([k, v]) => v !== null && v !== undefined)
+                    .map(([k, v]) => {
+                        const displayVal = String(v).trim();
+                        return displayVal ? `<span class="attr-tag">${k}: ${displayVal}</span>` : '';
                     })
                     .filter(Boolean);
                 if (!parts.length) return '';

@@ -31,7 +31,6 @@ class Product(BaseModel):
 class AttributeValue(BaseModel):
     raw: str | None = None
     value: str | None = None
-    numeric_values: list[float] = Field(default_factory=list)
 
 
 class NormalizedProduct(BaseModel):
@@ -61,8 +60,8 @@ class NormalizedProduct(BaseModel):
     category_level2: str | None = None
     category_level3: str | None = None
 
-    # Normalized attributes list (key/value with raw/value/numeric_values)
-    attributes: list[dict] = Field(default_factory=list)
+    # Raw attributes (stored, not indexed)
+    attributes: dict | None = None
 
     # Synthetic searchable field: normalized attribute keys + values as string
     # Used in embeddings for semantic search (title + description + attributes)

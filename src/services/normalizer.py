@@ -148,9 +148,8 @@ class ProductNormalizer:
         """Normalize a raw product into a clean, searchable format."""
         category_path, levels = self._parse_category(product.category)
         weights = self._convert_weights(product.unit_of_measure)
-        attributes, attributes_search = self._normalize_attributes(
-            product.attributes or {}
-        )
+        attributes = product.attributes or {}
+        attributes_search = self._build_attributes_search(attributes)
 
         return NormalizedProduct(
             id=product.id,
@@ -271,51 +270,26 @@ class ProductNormalizer:
 
         return clean_path, levels
 
-    def _normalize_attributes(self, attrs: dict) -> tuple[list[dict], str]:
+    def _build_attributes_search(self, attrs: dict) -> str | None:
         """
-        Normalize attribute keys and values dynamically.
+        Build attributes_search string from raw attributes.
 
-        All attributes are normalized and kept - no hardcoded list required.
-        - Keys are normalized (lowercase, underscores)
-        - Numeric values are parsed (handles strings like "3 HP" -> 3.0)
-        - Text values are cleaned
-        - All attributes stored dynamically in the model
-
-        Returns:
-            Tuple of (attributes_list, attributes_search_string)
-            attributes_search_string format: "key1: value1, key2: value2, ..."
+        - Normalizes keys (lowercase, underscores)
+        - Cleans values to strings
+        - Joins as "key: value" pairs
         """
-        normalized_list: list[dict] = []
+        if not attrs:
+            return None
+
         search_parts = []
-
         for key, value in attrs.items():
             if value is None:
                 continue
-
             normalized_key = self._normalize_attribute_key(key)
-
-            numeric_value = self._parse_numeric(value)
             cleaned_value = str(value).strip()
-
-            field = {
-                "key": normalized_key,
-                "value": {
-                    "raw": str(value) if value is not None else None,
-                    "value": cleaned_value,
-                    "numeric_values": [numeric_value]
-                    if numeric_value is not None
-                    else [],
-                },
-            }
-
-            normalized_list.append(field)
-
-            # Search string entry
             search_parts.append(f"{normalized_key}: {cleaned_value}")
 
-        attributes_search = ", ".join(search_parts) if search_parts else None
-
-        return normalized_list, attributes_search
+        return ", ".join(search_parts) if search_parts else None
 
     def _parse_numeric(self, value) -> float | None:
         """Parse numeric value, stripping unit suffix if present."""

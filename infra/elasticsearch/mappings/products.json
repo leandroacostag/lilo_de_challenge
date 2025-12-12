@@ -148,17 +148,8 @@
         "normalizer": "keyword_normalizer"
       },
       "attributes": {
-        "type": "nested",
-        "properties": {
-          "key": { "type": "keyword" },
-          "value": {
-            "properties": {
-              "raw":   { "type": "text",   "index": false },
-              "value": { "type": "text",   "index": false },
-              "numeric_values": { "type": "float", "index": false }
-            }
-          }
-        }
+        "type": "object",
+        "dynamic": false
       },
       "attributes_search": {
         "type": "text",

@@ -119,7 +119,7 @@ class ElasticsearchService:
             normalized = self.normalizer.normalize(product)
             normalized_products.append(normalized)
 
-        # Step 2: Generate embeddings in batch (much faster than one-by-one)
+        # Step 2: Generate embeddings in batch
         logger.info("Generating embeddings for products...")
         product_texts = [
             (
@@ -136,7 +136,7 @@ class ElasticsearchService:
         for normalized, embedding in zip(normalized_products, embeddings, strict=True):
             normalized.embedding = embedding
 
-        # Step 4: Bulk index in chunks to avoid 429 errors
+        # Step 4: Bulk index in chunks
         total_indexed = 0
         total_batches = (len(normalized_products) + BATCH_SIZE - 1) // BATCH_SIZE
 
