@@ -31,8 +31,15 @@ cd src && uv sync
 ```json
 {
   "product_analyzer": ["standard", "lowercase", "product_synonyms", "english_stop", "english_stemmer"],
-  "product_search_analyzer": ["standard", "lowercase", "product_synonyms"],
-  "keyword_normalizer": ["lowercase", "trim"]
+  "product_search_analyzer": ["standard", "lowercase", "product_synonyms"]
+}
+```
+
+### Normalizers
+
+```json
+{
+   "keyword_normalizer": ["lowercase", "trim"]
 }
 ```
 
