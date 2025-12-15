@@ -198,6 +198,28 @@ Based on test results, I tuned field weights in `_build_bm25_query`:
 
 Numeric patterns (`50mm`, `3 hp`) get additional phrase boost (40x) on `attributes_search` to surface exact matches.
 
+### Dynamic Vendor Detection
+
+Instead of hardcoding vendor names, I dynamically load all vendors from the index at startup and use **fuzzy matching** to detect them in queries:
+
+```python
+# 1. Load vendors from index (cached)
+vendors = await self._get_vendors_from_index()  # ["weir", "acme", "delta", ...]
+
+# 2. Detect vendor in query using fuzzy matching (handles typos)
+detected = self._detect_vendor_in_query("3 hp pump weir", vendors)
+# → "weir" (exact match)
+
+detected = self._detect_vendor_in_query("3 hp pump wier", vendors)  
+# → "weir" (fuzzy match, 80% threshold)
+```
+
+When a vendor is detected, it receives strong boosting:
+- **30x** boost on `vendor.value.text` match
+- **20x** boost on wildcard `vendor.value` match
+
+This allows queries like `"3 hp sewage pump weir"` to rank Weir-branded pumps at the top, even with typos like `"wier"` or `"weer"`.
+
 ---
 
 ## Task 4 — User-Level Customization
