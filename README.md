@@ -62,7 +62,7 @@ Synonyms loaded from `data/synonyms.json` at index creation (`wrench ↔ spanner
 
 ### Key Design: `attributes_search`
 
-Instead of indexing each attribute key individually (which creates mapping explosion with millions of products), we condense all attributes into a single searchable string:
+Instead of indexing each attribute key individually (which creates mapping explosion with millions of products), I condense all attributes into a single searchable string:
 
 ```json
 {
@@ -160,7 +160,7 @@ GET /search?q={query}&size=20&start=0&user_id=user_011
 
 ### Test Framework
 
-We implemented a test framework ([`src/tests/test_search_queries.py`](src/tests/test_search_queries.py)) to validate search quality:
+I implemented a test framework ([`src/tests/test_search_queries.py`](src/tests/test_search_queries.py)) to validate search quality:
 
 ```python
 CHALLENGE_TESTS = [
@@ -184,7 +184,7 @@ cd src && uv run python tests/test_search_queries.py
 
 ### Boosting Decisions
 
-Based on test results, we tuned field weights in `_build_bm25_query`:
+Based on test results, I tuned field weights in `_build_bm25_query`:
 
 ```python
 "fields": [
@@ -218,7 +218,7 @@ User order history can be stored anywhere (database, API, etc.). For this demo, 
 
 ### Boosting Logic
 
-When `user_id` is provided, we fetch their purchase history and apply multipliers:
+When `user_id` is provided, I fetch their purchase history and apply multipliers:
 
 | Orders | Boost | Rationale |
 |--------|-------|-----------|
