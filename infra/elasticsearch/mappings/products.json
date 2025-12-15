@@ -42,7 +42,10 @@
       "normalizer": {
         "keyword_normalizer": {
           "type": "custom",
-          "filter": ["lowercase", "trim"]
+          "filter": [
+            "lowercase",
+            "trim"
+          ]
         }
       }
     }
@@ -82,12 +85,12 @@
       "title": {
         "properties": {
           "raw": {
-        "type": "text",
+            "type": "text",
             "index": false
-      },
+          },
           "value": {
-        "type": "text",
-        "analyzer": "product_analyzer",
+            "type": "text",
+            "analyzer": "product_analyzer",
             "search_analyzer": "product_search_analyzer",
             "fields": {
               "keyword": {
@@ -100,13 +103,13 @@
       "description": {
         "properties": {
           "raw": {
-        "type": "text",
+            "type": "text",
             "index": false
-      },
+          },
           "value": {
-        "type": "text",
-        "analyzer": "product_analyzer",
-        "search_analyzer": "product_search_analyzer"
+            "type": "text",
+            "analyzer": "product_analyzer",
+            "search_analyzer": "product_search_analyzer"
           }
         }
       },

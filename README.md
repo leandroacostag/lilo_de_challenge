@@ -1,286 +1,290 @@
 # Product Search Engine
 
-A high-performance product search engine built with **FastAPI**, **Elasticsearch**, and **sentence-transformers**. Features hybrid BM25 + vector search with user-level personalization.
+A scalable product search engine built with **FastAPI**, **Elasticsearch**, and **sentence-transformers**. Features hybrid BM25 + vector search with user-level personalization.
 
-## 🚀 Quick Start
+![Search UI](docs/screenshot_1.png)
 
-### Prerequisites
+---
 
-- **Docker** and **Docker Compose** (for Elasticsearch)
-- **Python 3.11+**
-- **uv** (Python package manager)
-
-### Installation
-
-1. **Install uv** (if not already installed):
-   ```bash
-   curl -LsSf https://astral.sh/uv/install.sh | sh
-   ```
-
-2. **Install dependencies**:
-   ```bash
-   cd src
-   uv sync
-   ```
-
-3. **Set up environment** (optional):
-   ```bash
-   cd src
-   cp .env.example .env  # Edit if needed
-   ```
-
-### Running the Application
-
-#### Option 1: Using the run script (Recommended)
+## Quick Start
 
 ```bash
+# 1. Install uv (Python package manager)
+curl -LsSf https://astral.sh/uv/install.sh | sh
+
+# 2. Install dependencies
+cd src && uv sync
+
+# 3. Start everything (Elasticsearch + FastAPI)
 ./run.sh
 ```
 
-This script will:
-- Start Elasticsearch via Docker Compose
-- Wait for Elasticsearch to be healthy
-- Start the FastAPI server with uvicorn
-- Handle cleanup on exit (Ctrl+C)
+- **Web UI**: http://localhost:8000
+- **API Docs**: http://localhost:8000/docs
 
-#### Option 2: Manual setup
+---
 
-1. **Start Elasticsearch**:
-   ```bash
-   cd infra/elasticsearch
-   docker compose up -d
-   ```
+## Task 1 — Index Design and Mapping
 
-2. **Wait for Elasticsearch to be ready** (check health):
-   ```bash
-   curl -u elastic:changeme http://localhost:9200/_cluster/health
-   ```
+### Analyzers
 
-3. **Start the FastAPI server**:
-   ```bash
-   cd src
-   source .venv/bin/activate  # or: uv run
-   python -m uvicorn main:app --reload --host 0.0.0.0 --port 8000
-   ```
-
-4. **Access the application**:
-   - **Web UI**: http://localhost:8000
-   - **API Docs**: http://localhost:8000/docs
-   - **Health Check**: http://localhost:8000/health
-
-## 📁 Project Structure
-
-```
-.
-├── data/                    # Data files (products, orders, synonyms)
-│   ├── products.json
-│   ├── orders.json
-│   ├── synonyms.json
-│   └── categories.json
-├── docs/                    # Documentation
-│   ├── task_1.md           # Index design and mapping
-│   ├── task_2.md           # Core search functionality
-│   ├── task_3.md           # Data quality handling
-│   └── task_4.md           # User-level customization
-├── infra/                   # Infrastructure configuration
-│   └── elasticsearch/
-│       ├── docker-compose.yml
-│       └── mappings/        # ES index mappings
-│           ├── products.json
-│           └── orders.json
-├── src/                     # Application source code
-│   ├── config/              # Configuration files
-│   │   └── normalizer.json
-│   ├── models/              # Pydantic models
-│   ├── services/            # Business logic
-│   │   ├── elasticsearch.py
-│   │   ├── embeddings.py
-│   │   ├── migrations.py
-│   │   └── normalizer.py
-│   ├── static/              # Web UI
-│   │   └── index.html
-│   ├── tests/               # Test suites
-│   ├── config.py            # Settings management
-│   ├── main.py              # FastAPI app
-│   └── pyproject.toml        # Dependencies
-├── run.sh                   # Startup script
-└── README.md               # This file
+```json
+{
+  "product_analyzer": ["standard", "lowercase", "product_synonyms", "english_stop", "english_stemmer"],
+  "product_search_analyzer": ["standard", "lowercase", "product_synonyms"],
+  "keyword_normalizer": ["lowercase", "trim"]
+}
 ```
 
-## 🔧 Configuration
+Synonyms loaded from `data/synonyms.json` at index creation (`wrench ↔ spanner`, `pipe ↔ tube`).
 
-### Environment Variables
+### Field Mapping
 
-Create a `.env` file in `src/` (or use defaults):
+| Field | Type | Purpose |
+|-------|------|---------|
+| `title.value` / `description.value` | text (analyzed) | Full-text search |
+| `title.raw` / `description.raw` | text (not indexed) | Display only |
+| `vendor.value` | keyword + text subfield | Filtering + search |
+| `category` | text + keyword | Search + facets |
+| `category_level1/2/3` | keyword | Hierarchical filtering |
+| `attributes` | object (not indexed) | Raw display in UI |
+| `attributes_search` | text | **Searchable condensed attributes** |
+| `embedding` | dense_vector (384 dims) | Semantic/vector search |
+| `weight_kg/g/lb/oz` | float | Multi-unit range queries |
+| `region_availability` | keyword array | Multi-region filtering |
 
+### Key Design: `attributes_search`
+
+Instead of indexing each attribute key individually (which creates mapping explosion with millions of products), we condense all attributes into a single searchable string:
+
+```json
+{
+  "attributes": {"power_hp": "3 HP", "flow_lpm": 120, "material": "PVC"},
+  "attributes_search": "power_hp: 3 HP, flow_lpm: 120, material: PVC"
+}
+```
+
+**Why?** This is a 10K sample, but the solution is designed to scale to millions of products with arbitrary attributes. A single text field:
+- Avoids dynamic mapping bloat
+- Works with both BM25 and embeddings
+- Handles typos in attribute keys naturally via fuzzy text search
+
+### Handling Messy Data
+
+| Problem | Solution |
+|---------|----------|
+| Inconsistent attribute keys (`colur`, `diam_mm`) | Normalize to `key: value` in `attributes_search`; raw kept for display |
+| Non-normalized units (`kg`, `KG`, `kilogram`) | Map to canonical + convert to all weight units |
+| Junk text (`### $$ @@`, duplicate words) | Regex cleaning; `.raw` preserves original |
+| Messy categories (`Safety>>Gloves`) | Parse to `level1/2/3`; normalize separators |
+
+**Full mapping**: [`infra/elasticsearch/mappings/products.json`](infra/elasticsearch/mappings/products.json)
+
+---
+
+## Task 2 — Core Search Functionality
+
+### API
+
+```
+GET /search?q={query}&size=20&start=0&user_id=user_011
+```
+
+### Hybrid Search Architecture
+
+```
+┌────────────────────────────────────────────────────────┐
+│                   QUERY: "pvc pipe 50mm"               │
+├────────────────────────────────────────────────────────┤
+│  1. BM25 (Keyword)                                     │
+│     └─ multi_match on title^5, category^3, vendor^4,  │
+│        description, attributes_search^2               │
+│                                                        │
+│  2. kNN (Semantic)                                     │
+│     └─ 384-dim embedding on title+desc+attributes     │
+│                                                        │
+│  3. Manual RRF Fusion                                  │
+│     └─ score = 1/(60+rank_bm25) + 1/(60+rank_knn)     │
+│                                                        │
+│  4. User Boost (if user_id provided)                   │
+│     └─ Multiply score by purchase history factor      │
+└────────────────────────────────────────────────────────┘
+```
+
+### Example Queries
+
+| Query | Expected | Result |
+|-------|----------|--------|
+| `3 hp sewage pump weir` | Weir pumps with 3HP | ✅ Weir vendor + `power_hp: 3 HP` at top |
+| `nitrile glove bulk pack` | Bulk nitrile gloves | ✅ Gloves with bulk attributes ranked first |
+| `pvc pipe 50mm` | 50mm PVC pipes | ✅ Products with `diameter: 50 mm` boosted |
+| `tomato` | Food items | ✅ `Food > Vegetables > Tomato` category |
+| `tomato makeup` | Cosmetics (not food) | ✅ `Cosmetics > Makeup > Face` category |
+
+### Screenshots
+
+**Query: "3 hp sewage pump weir"** — Weir vendor pumps with 3HP ranked first:
+![3hp pump](docs/screenshot_1.png)
+
+**Query: "pvc pipe 50mm"** — 50mm diameter pipes boosted via attributes_search:
+![pvc pipe](docs/screenshot_2.png)
+
+**Query: "tomato"** — Food items first:
+![tomato](docs/screenshot_4.png)
+
+**Query: "tomato makeup"** — Cosmetics first (not food):
+![tomato makeup](docs/screenshot_5.png)
+
+---
+
+## Task 3 — Handling Poor Data Quality
+
+### Strategies
+
+| Strategy | Implementation | Effect |
+|----------|----------------|--------|
+| **Synonym analyzer** | `data/synonyms.json` injected at index time | `wrench` finds `spanner` |
+| **Text cleaning** | Regex removes `### $$ @@`, dedup words | Clean searchable text |
+| **Unit normalization** | Map `kg/KG/kilogram` → `kg`; store all units | Filter in any unit |
+| **Attributes condensed** | `attributes_search` text field | Search any attribute |
+| **Vector search** | `all-MiniLM-L6-v2` on title+desc+attributes | Semantic understanding |
+| **Numeric boosting** | Extract `50mm`, `3 hp` from query, boost matches | Precise attribute matching |
+| **Vendor detection** | Fuzzy match vendor names in query | `weir` boosts Weir products |
+
+### Test Framework
+
+We implemented a test framework ([`src/tests/test_search_queries.py`](src/tests/test_search_queries.py)) to validate search quality:
+
+```python
+CHALLENGE_TESTS = [
+    SearchTest(
+        query="3 hp sewage pump weir",
+        expected_vendor_contains="weir",
+        expected_attributes=["power_hp", "flow_lpm"],
+    ),
+    SearchTest(
+        query="tomato makeup",
+        expected_category_contains="cosmetic",
+    ),
+    # ... more tests
+]
+```
+
+Run tests:
 ```bash
-ELASTICSEARCH_URL=http://localhost:9200
-ELASTICSEARCH_USER=elastic
-ELASTICSEARCH_PASSWORD=changeme
-DATA_PATH=../data
+cd src && uv run python tests/test_search_queries.py
 ```
 
-### Elasticsearch Settings
+### Boosting Decisions
 
-- **Default password**: `changeme` (set via `ELASTIC_PASSWORD` in docker-compose.yml)
-- **Ports**: `9200` (HTTP), `9300` (transport)
-- **Memory**: 512MB heap (configurable via `ES_JAVA_OPTS`)
+Based on test results, we tuned field weights in `_build_bm25_query`:
 
-## 🎯 Features
-
-### Search Capabilities
-
-- **Hybrid Search**: Combines BM25 (keyword) and kNN (semantic) search
-- **Reciprocal Rank Fusion (RRF)**: Manually implemented for combining results
-- **User Personalization**: Boosts products based on user purchase history
-- **Numeric Attribute Extraction**: Parses queries like "3 hp", "50mm", "220v"
-- **Vendor Detection**: Identifies vendor names in queries
-- **Category Hints**: Understands category keywords
-
-### Data Normalization
-
-- **Fuzzy Attribute Matching**: Handles typos in attribute keys
-- **Unit Normalization**: Converts weights/units to standard formats
-- **Text Cleaning**: Removes junk patterns and normalizes text
-- **Synonym Expansion**: Uses synonym analyzer for better matching
-
-### API Endpoints
-
-- `GET /` - Web UI for searching products
-- `GET /search?q=...&size=20&start=0&user_id=...` - Search products
-- `GET /users` - List all users with order counts
-- `GET /health` - Health check
-- `GET /stats` - Index statistics
-- `GET /docs` - Interactive API documentation
-
-## 🧪 Testing
-
-### Run Search Quality Tests
-
-```bash
-cd src
-uv run python -m pytest tests/test_search_queries.py -v
+```python
+"fields": [
+    "title.value^5",      # Primary identifier
+    "category^3",         # Category context
+    "vendor.value.text^4", # Brand matters
+    "description.value",   # Secondary content
+    "attributes_search^2"  # Attribute matching
+]
 ```
 
-Or run directly:
-```bash
-cd src
-uv run python tests/test_search_queries.py
+Numeric patterns (`50mm`, `3 hp`) get additional phrase boost (40x) on `attributes_search` to surface exact matches.
+
+---
+
+## Task 4 — User-Level Customization
+
+### Architecture
+
+User order history can be stored anywhere (database, API, etc.). For this demo, orders are indexed in Elasticsearch for convenience.
+
+```
+┌─────────────────────────────────────────────────────────┐
+│  User orders could live in:                             │
+│  • PostgreSQL / MySQL                                   │
+│  • Redis (for fast lookups)                             │
+│  • External API                                         │
+│  • Elasticsearch (this demo) ← just for convenience    │
+└─────────────────────────────────────────────────────────┘
 ```
 
-### Test User Personalization
+### Boosting Logic
 
-```bash
-cd src
-uv run python tests/test_user_personalization.py
+When `user_id` is provided, we fetch their purchase history and apply multipliers:
+
+| Orders | Boost | Rationale |
+|--------|-------|-----------|
+| 1-5 | 1.2x | Slight preference |
+| 6-20 | 1.5x | Regular buyer |
+| 21-50 | 2.0x | Heavy user |
+| 50+ | 2.5x | Power user |
+
+```python
+final_score = base_rrf_score × user_boost_multiplier
 ```
 
-## 📊 Index Management
+### Example: User Personalization
 
-### Re-index Products
+**Without user_id** — Standard ranking:
+![no user](docs/screenshot_2.png)
 
-The application automatically creates and populates indexes on startup if they don't exist. To force re-indexing:
+**With user_id=user_011** — Previously ordered "PVC Pipe replacement" (41 orders) jumps to #1 with 2x boost:
+![with user](docs/screenshot_3.png)
 
-1. Delete the index:
-   ```bash
-   curl -u elastic:changeme -X DELETE http://localhost:9200/products
-   ```
+---
 
-2. Restart the application (it will re-create and populate)
+## Task 5 — Design Decisions & Trade-offs
 
-### Check Index Stats
+### Key Trade-offs
 
-```bash
-curl -u elastic:changeme http://localhost:8000/stats
+| Decision | Trade-off | Rationale |
+|----------|-----------|-----------|
+| `attributes_search` text field | Less precise filtering | Scales to millions without mapping explosion |
+| Manual RRF | More code | Avoids Elasticsearch license constraints |
+| Lightweight embeddings (MiniLM) | Less semantic power | Fast indexing, good enough for product search |
+| Orders in ES | Not production-ready | Demo convenience; real system uses proper DB |
+
+### Maintenance
+
+| Task | How |
+|------|-----|
+| **Synonyms** | Edit `data/synonyms.json`, re-index |
+| **Categories** | Update `data/categories.json`, re-normalize |
+| **Relevance tuning** | Adjust boosts in `_build_bm25_query`, run test framework |
+| **A/B testing** | Compare `/search` with different params, log metrics |
+
+### Monitoring
+
+- Track null/empty fields during normalization (logs)
+- Monitor index size (attributes not indexed = smaller index)
+- Periodic synonym/category refresh from domain experts
+
+---
+
+## Project Structure
+
+```
+├── data/                    # Products, orders, synonyms
+├── docs/                    # Screenshots
+├── infra/elasticsearch/     # Docker + mappings
+├── src/
+│   ├── services/
+│   │   ├── elasticsearch.py # Search logic, RRF, user boost
+│   │   ├── embeddings.py    # sentence-transformers
+│   │   └── normalizer.py    # Data cleaning
+│   ├── tests/               # Search quality tests
+│   ├── static/index.html    # Web UI
+│   └── main.py              # FastAPI app
+└── run.sh                   # One-command startup
 ```
 
-## 🛠️ Development
+---
 
-### Code Quality
+## Deliverables
 
-This project uses **ruff** for linting and formatting:
-
-```bash
-cd src
-uv run ruff check .
-uv run ruff format .
-```
-
-### Dependencies
-
-Managed via `uv` and `pyproject.toml`. Key dependencies:
-
-- `fastapi` - Web framework
-- `elasticsearch[async]` - Elasticsearch client
-- `sentence-transformers` - Embedding generation
-- `rapidfuzz` - Fuzzy string matching
-- `pydantic` - Data validation
-
-## 🐳 Docker
-
-### Elasticsearch Container
-
-The Elasticsearch container is managed via Docker Compose:
-
-```bash
-cd infra/elasticsearch
-docker compose up -d      # Start
-docker compose down       # Stop
-docker compose down -v    # Stop and remove volumes
-```
-
-### Health Check
-
-```bash
-curl -u elastic:changeme http://localhost:9200/_cluster/health?pretty
-```
-
-## 📝 Challenge Tasks
-
-This project implements a product search engine with the following tasks:
-
-1. **Task 1**: Index design and mapping with analyzers
-2. **Task 2**: Core search functionality (BM25 + vector search)
-3. **Task 3**: Handling poor data quality (normalization, fuzzy matching, synonyms)
-4. **Task 4**: User-level customization and boosting
-
-See `docs/task_*.md` for detailed documentation.
-
-## 🔍 Example Queries
-
-Try these in the web UI:
-
-- `3 hp sewage pump weir` - Should find Weir pumps with 3 HP
-- `nitrile glove bulk pack` - Should find nitrile gloves in bulk
-- `pvc pipe 50mm` - Should find PVC pipes with 50mm diameter
-- `tomato` - Should return food items
-- `tomato makeup` - Should return cosmetics (not food)
-
-## 🚨 Troubleshooting
-
-### Elasticsearch not starting
-
-- Check Docker is running: `docker ps`
-- Check logs: `docker logs elasticsearch`
-- Verify ports 9200/9300 are not in use
-
-### Import errors
-
-- Ensure you're in the `src/` directory
-- Run `uv sync` to install dependencies
-- Activate virtual environment: `source .venv/bin/activate`
-
-### Search not working
-
-- Verify Elasticsearch is healthy: `curl -u elastic:changeme http://localhost:9200/_cluster/health`
-- Check indexes exist: `curl -u elastic:changeme http://localhost:8000/stats`
-- Review application logs for errors
-
-## 📄 License
-
-This project is part of a data engineering challenge.
-
-## 👤 Author
-
-Built as a demonstration of Elasticsearch search capabilities and data engineering best practices.
-
+- ✅ **Index mappings**: [`infra/elasticsearch/mappings/products.json`](infra/elasticsearch/mappings/products.json)
+- ✅ **Query/API code**: [`src/services/elasticsearch.py`](src/services/elasticsearch.py)
+- ✅ **Preprocessing**: [`src/services/normalizer.py`](src/services/normalizer.py)
+- ✅ **Demo UI**: http://localhost:8000 (see screenshots above)
+- ✅ **Written report**: This README
