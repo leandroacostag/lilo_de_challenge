@@ -97,6 +97,10 @@ Instead of indexing each attribute key individually (which creates mapping explo
 GET /search?q={query}&size=20&start=0&user_id=user_011
 ```
 
+### Code
+
+You can check search API code at [`src/services/elasticsearch.py`](src/services/elasticsearch.py#L367)
+
 ### Hybrid Search Architecture
 
 ```
