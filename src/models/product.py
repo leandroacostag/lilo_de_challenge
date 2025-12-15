@@ -28,11 +28,6 @@ class Product(BaseModel):
         populate_by_name = True
 
 
-class AttributeValue(BaseModel):
-    raw: str | None = None
-    value: str | None = None
-
-
 class NormalizedProduct(BaseModel):
     """Product model after normalization, ready for Elasticsearch indexing."""
 

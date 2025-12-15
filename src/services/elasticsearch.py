@@ -1,6 +1,7 @@
 import asyncio
 import json
 import logging
+import re
 from pathlib import Path
 
 from elasticsearch import AsyncElasticsearch
@@ -616,8 +617,6 @@ class ElasticsearchService:
 
     def _extract_numbers(self, query: str) -> list[float]:
         """Extract numeric values from query (e.g., '50mm' -> 50.0)."""
-        import re
-
         numbers: list[float] = []
         for match in re.finditer(r"(\d+(?:\.\d+)?)", query):
             try:
@@ -716,7 +715,6 @@ class ElasticsearchService:
                     # Category match boost
                     {"match": {"category": {"query": query, "boost": 3}}},
                 ],
-                "filter": [],  # Will add numeric attribute filters here
             }
         }
 
@@ -768,37 +766,3 @@ class ElasticsearchService:
             )
 
         return bool_query
-
-    def _format_search_response(self, response: dict, query: str) -> dict:
-        """Format ES response into a clean API response."""
-        hits = response.get("hits", {})
-        total = hits.get("total", {}).get("value", 0)
-
-        results = []
-        for hit in hits.get("hits", []):
-            source = hit["_source"]
-            result = {
-                "id": source.get("id"),
-                "score": hit["_score"],
-                "title": source.get("title", {}).get("raw"),
-                "description": source.get("description", {}).get("raw"),
-                "vendor": source.get("vendor", {}).get("raw"),
-                "category": source.get("category"),
-                "sku": source.get("sku"),
-                "supplier_rating": source.get("supplier_rating"),
-                "inventory_status": source.get("inventory_status"),
-                "attributes": source.get("attributes", {}),
-            }
-
-            # Add highlights if present
-            if "highlight" in hit:
-                result["highlights"] = hit["highlight"]
-
-            results.append(result)
-
-        return {
-            "query": query,
-            "total": total,
-            "returned": len(results),
-            "results": results,
-        }
